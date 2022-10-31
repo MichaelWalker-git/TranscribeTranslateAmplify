@@ -74,6 +74,7 @@ const startStreaming = async (language: string,
                             for (let i = 0; i < noOfResults; i++) {
                                 wholeSentence += ` ${result?.Alternatives[0].Items[i].Content}`;
                             }
+                            console.log("wholeSentence", wholeSentence);
                             callback(wholeSentence, transcribeClient, microphoneStream);
                         }
                     }

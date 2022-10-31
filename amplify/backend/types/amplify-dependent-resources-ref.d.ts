@@ -9,5 +9,11 @@ export type AmplifyDependentResourcesAttributes = {
             "AppClientID": "string",
             "AppClientSecret": "string"
         }
+    },
+    "api": {
+        "transcribereinvent": {
+            "GraphQLAPIIdOutput": "string",
+            "GraphQLAPIEndpointOutput": "string"
+        }
     }
 }

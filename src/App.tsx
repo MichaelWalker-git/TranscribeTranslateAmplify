@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {Amplify, Auth} from "aws-amplify";
+import {Amplify, Auth, API, graphqlOperation} from "aws-amplify";
 
 import {
     AmplifyProvider,
@@ -18,6 +18,14 @@ import {TranscribeStreamingClient} from "@aws-sdk/client-transcribe-streaming";
 
 import "@aws-amplify/ui-react/styles.css";
 import theme from "./theme";
+import {createTodo} from "./graphql/mutations";
+import {CreateTodoInput} from "./API";
+import {CognitoUser} from "amazon-cognito-identity-js";
+import {onCreateTodo} from "./graphql/subscriptions";
+import {GraphQLSubscription, GraphQLQuery} from "@aws-amplify/api";
+import {listTodos, todosByDate} from "./graphql/queries";
+import {TranslationComponent} from "./components/TranslationComponent";
+import {TranscriptionComponent} from "./components/TranscriptionComponent";
 
 window.Buffer = window.Buffer || require("buffer").Buffer;
 
@@ -25,7 +33,7 @@ Amplify.configure(aws_exports);
 
 const App = () => {
     const [selectedLanguage, setSelectedLanguage] = React.useState("");
-    const [transcribedText, setTranscribedText] = React.useState<Array<string>>([]);
+    const [transcribedText, setTranscribedText] = React.useState<CreateTodoInput[]>([]);
     const [translatedText, setTranslatedText] = React.useState("");
     const [targetLanguage, setTargetLanguage] = React.useState("");
     const [translationLanguageList, setTranslationLanguageList] = React.useState("");
@@ -33,8 +41,23 @@ const App = () => {
     const [transcriptionClient, setTranscriptionClient] = React.useState<TranscribeStreamingClient>();
     const [microphoneStream, setMicrophoneStream] = React.useState<MicrophoneStream>();
 
-    const [isRecordButtonActive, setIsRecordButtonActive] = React.useState(false);
-    const [isInputLanguageListDisabled, disableInputLanguage] = React.useState(false);
+    const fetchMessages = async () => {
+        const messagesData = await API.graphql(
+            graphqlOperation(todosByDate, {
+                sortDirection: 'DESC',
+                limit: 200,
+                type: "meetingTranscript",
+            })
+        );
+        // @ts-ignore
+        console.log(messagesData?.data.item)
+        // @ts-ignore
+        setTranscribedText(messagesData.data.todosByDate.items);
+    };
+
+    useEffect(() => {
+        fetchMessages();
+    }, []);
 
     useEffect(() => {
         const getUserInfo = async (): Promise<ICredentials> => {
@@ -46,53 +69,30 @@ const App = () => {
         })
     }, [])
 
-    const startRecording = async () => {
-        if (selectedLanguage === "") {
-            alert("Please select a language");
-            return;
-        }
-        disableInputLanguage(true);
-        setIsRecordButtonActive(true);
+    useEffect(() => {
+        const onCreateNewMsg = API.graphql(
+            graphqlOperation(onCreateTodo)
+        ) as any;
 
-        try {
-            if (userCredentials) {
-                await TranscribeClient.startRecording(
-                    selectedLanguage,
-                    onTranscriptionDataReceived,
-                    userCredentials
-                );
-            } else {
-                console.error("User credentials not found");
+        onCreateNewMsg.subscribe({
+            next: () => {
+                // const newMsg = data.value.data.onCreateMessage;
+                // if (newMsg.chatRoomID !== route.params.id) {
+                //     console.log('Message is in another room!');
+                //     return;
+                // }
+                fetchMessages();
+            },
+        });
+
+        return () => {
+            if (onCreateNewMsg && onCreateNewMsg?.unsubscribe) {
+                onCreateNewMsg.unsubscribe();
             }
-        } catch (error: any) {
-            alert("An error occurred while recording: " + error.message);
-            stopRecording();
         }
-    };
 
-    const onRecordPress = async () => {
-        if (!isRecordButtonActive) {
-            await startRecording();
-        } else {
-            await stopRecording();
-        }
-    };
+    }, [])
 
-
-    const onTranscriptionDataReceived = (data: string, transcriptionClient: TranscribeStreamingClient, microphoneStream: MicrophoneStream) => {
-        console.log("data  ", data);
-        console.log(transcribedText, " transcribedText");
-        setTranscribedText([...transcribedText, data]);
-        setMicrophoneStream(microphoneStream);
-        setTranscriptionClient(transcriptionClient);
-    }
-
-    const stopRecording = function () {
-        disableInputLanguage(false);
-        if (microphoneStream && transcriptionClient) {
-            TranscribeClient.stopRecording(microphoneStream, transcriptionClient);
-        }
-    };
 
     const translateText = async () => {
         const sourceText = transcribedText;
@@ -124,13 +124,13 @@ const App = () => {
     };
 
     const clearTranscription = () => {
-        setTranscribedText([])
+        // setTranscribedText([])
         setTranslatedText("")
     };
 
     const handleTranslationLanguageList = (event: React.ChangeEvent<HTMLSelectElement>) => {
         console.log("handleTranslationLanguageList", event.target.value);
-        setTranslationLanguageList(event.target.value);
+        setTargetLanguage(event.target.value);
     }
     const handleInputLanguageList = (event: React.ChangeEvent<HTMLSelectElement>) => {
         console.log("handleInputLanguageList", event.target.value);
@@ -154,46 +154,18 @@ const App = () => {
 
                         <View width="100%">
                             <div id="mainContainer">
-                                <h1>Streaming Speech to Text</h1>
-                                <select id="inputLanguageList"
-                                        disabled={isInputLanguageListDisabled}
-                                        onChange={handleInputLanguageList}
-                                >
-                                    <option value="nan">Select the language you are going to speak</option>
-                                    <option value="zh-CN">Chinese (simplified)</option>
-                                    <option value="en-AU">English (Australian)</option>
-                                    <option value="en-GB">English (British)</option>
-                                    <option value="en-US">English (US)</option>
-                                    <option value="fr-FR">French</option>
-                                    <option value="fr-CA">French (Canadian)</option>
-                                    <option value="de-DE">German</option>
-                                    <option value="it-IT">Italian</option>
-                                    <option value="ja-JP">Japanese</option>
-                                    <option value="ko-KR">Korean</option>
-                                    <option value="pt-BR">Portugese (Brazilian)</option>
-                                    <option value="es-US">Spanish (US)</option>
-                                </select>
-
-                                <div id="recordButtonContainer">
-                                    <Button id="record"
-                                            className={isRecordButtonActive ? "recordActive" : "recordInactive"}
-                                            onClick={onRecordPress}>◉ Record
-                                    </Button>
-                                </div>
-
-                                <div id="outputSection">
-                                    <div id="headerText"><h2>Transcription</h2></div>
-                                    <div id="transcribedText">
-                                        {
-                                            transcribedText.length > 0 && <div>
-                                                {transcribedText.join(" ")}
-                                            </div>
-                                        }
-                                    </div>
-
-                                    {/*<div id="headerText"><h2>Translation</h2></div>*/}
-                                    {/*<div id="translatedText"></div>*/}
-                                </div>
+                                <TranscriptionComponent
+                                    selectedLanguage={selectedLanguage}
+                                    handleInputLanguageList={handleInputLanguageList}
+                                    userCredentials={userCredentials}
+                                    transcribedText={transcribedText}
+                                    setMicrophoneStream={setMicrophoneStream}
+                                    setTranscriptionClient={setTranscriptionClient}
+                                    transcriptionClient={transcriptionClient}
+                                    microphoneStream={microphoneStream}/>
+                                <TranslationComponent clearTranscription={clearTranscription}
+                                                      translateText={translateText}
+                                                      handleTranslationLanguageList={handleInputLanguageList}/>
                             </div>
                         </View>
                     </Flex>

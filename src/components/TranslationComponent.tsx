@@ -6,7 +6,7 @@ interface ITranslationComponentProps {
     clearTranscription: () => void;
 }
 
-function TranslationComponent({
+export function TranslationComponent({
                                   handleTranslationLanguageList,
                                   translateText,
                                   clearTranscription,
