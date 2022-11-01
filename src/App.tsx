@@ -20,12 +20,12 @@ import {onCreateTodo} from "./graphql/subscriptions";
 import {todosByDate} from "./graphql/queries";
 import {TranslationComponent} from "./components/TranslationComponent";
 import {ITranslatedInput, TranscriptionComponent} from "./components/TranscriptionComponent";
-import {
-    PollyClient,
-    SynthesizeSpeechCommand,
-    SynthesizeSpeechCommandInput,
-    SynthesizeSpeechCommandOutput
-} from "@aws-sdk/client-polly";
+// import {
+//     PollyClient,
+//     SynthesizeSpeechCommand,
+//     SynthesizeSpeechCommandInput,
+//     SynthesizeSpeechCommandOutput
+// } from "@aws-sdk/client-polly";
 
 window.Buffer = window.Buffer || require("buffer").Buffer;
 
@@ -57,7 +57,7 @@ const App = () => {
     };
 
     const speakOutLoud = async (inputText: string) => {
-        const client = new PollyClient({region: "us-east-1"});
+        // const client = new PollyClient({region: "us-east-1"});
         //
         // const params: SynthesizeSpeechCommandInput = {
         //     OutputFormat: 'mp3',
