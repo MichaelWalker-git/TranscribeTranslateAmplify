@@ -12,16 +12,6 @@ You should have an AWS Account ready to use and Node, npm and Amplify CLI instal
 
 The AWS Amplify Console provides hosting for fullstack serverless web apps. Deploy this app to your AWS account with a single click:
 
-[![amplifybutton](https://oneclick.amplifyapp.com/button.svg)](https://console.aws.amazon.com/amplify/home#/deploy?repo=https://github.com/aws-samples/create-react-app-amplify-auth-typescript)
-
-The Amplify Console will fork this repo in your GitHub account, and then build and deploy your backend and frontend in a single workflow. Your app will be available at `https://main.appid.amplifyapp.com`.
-
-## Preview
-
-<img src="assets/create-account.png" width="600"/>
-<img src="assets/signin.png" width="600"/>
-<img src="assets/home.png" width="600"/>
-
 ## Run locally with the Amplify CLI
 
 1. Fork the repo in your account and then clone it as below.
