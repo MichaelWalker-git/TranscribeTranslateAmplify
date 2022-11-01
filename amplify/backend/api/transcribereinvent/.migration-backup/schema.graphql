@@ -1,0 +1,8 @@
+type Todo @model @auth(rules: [{ allow: owner }]) {
+  id: ID!
+  speaker: String!
+  transcript: String
+  language: String!
+  meetingId: String!
+  createdAt: String!
+}

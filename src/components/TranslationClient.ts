@@ -6,7 +6,7 @@ const DEFAULT_REGION = "us-east-1";
 
 export const translateTextToLanguage = async (text: string,
                                               targetLanguage: string,
-                                              userCredentials: ICredentials) => {
+                                              userCredentials: ICredentials): Promise<string> => {
     console.log("inside - translateTextToLanguage", text, targetLanguage);
     const sourceLanguage: string = await detectLanguageOfText(text, userCredentials);
     console.log(sourceLanguage, "sourceLanguage");
@@ -32,7 +32,7 @@ const createComprehendClient = (userCredentials: ICredentials) => {
 const translateTextFromLanguageToLanguage = async (text: string,
                                                    sourceLanguage: string,
                                                    targetLanguage: string,
-                                                   userCredentials: ICredentials) => {
+                                                   userCredentials: ICredentials): Promise<string> => {
     const translateClient = new TranslateClient({
         region: DEFAULT_REGION,
         credentials: userCredentials
@@ -47,7 +47,6 @@ const translateTextFromLanguageToLanguage = async (text: string,
     const data = await translateClient.send(
         new TranslateTextCommand(translateParams)
     );
-    console.log(data, "data from translate client")
-    return data.TranslatedText;
+    return data?.TranslatedText || "";
 
 }

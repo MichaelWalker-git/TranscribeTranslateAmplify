@@ -4,17 +4,21 @@ interface ITranslationComponentProps {
     handleTranslationLanguageList: (event: React.ChangeEvent<HTMLSelectElement>) => void;
     translateText: () => void;
     clearTranscription: () => void;
+    targetLanguage: string
 }
 
 export function TranslationComponent({
                                   handleTranslationLanguageList,
                                   translateText,
+                                         targetLanguage,
                                   clearTranscription,
                               }: ITranslationComponentProps) {
     return (
         <div id="controlContainer">
-            <select id="translationLanguageList" style={{padding: '10px'}}
+            <select id="translationLanguageList"
+                    style={{padding: '10px'}}
                     onChange={handleTranslationLanguageList}
+                    value={targetLanguage}
             >
                 <option value="nan">Select translation language</option>
                 <option value="af">Afrikaans</option>

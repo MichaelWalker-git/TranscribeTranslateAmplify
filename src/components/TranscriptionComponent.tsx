@@ -17,7 +17,11 @@ interface ITranscriptionComponentProps {
     userCredentials: ICredentials|undefined,
     setMicrophoneStream: (microphoneStream: MicrophoneStream) => void;
     setTranscriptionClient: (transcriptionClient: TranscribeStreamingClient) => void;
-    transcribedText: CreateTodoInput[];
+    transcribedText: ITranslatedInput[];
+}
+
+export interface ITranslatedInput extends CreateTodoInput {
+    translatedText?: string
 }
 
 export function TranscriptionComponent(props: ITranscriptionComponentProps) {
@@ -44,7 +48,7 @@ export function TranscriptionComponent(props: ITranscriptionComponentProps) {
 
     const writeTranscribedText = async (transcribedText: string) => {
         const user: CognitoUser = await Auth.currentAuthenticatedUser();
-        const params: CreateTodoInput = {
+        const params: ITranslatedInput = {
             language: selectedLanguage,
             meetingId: "1",
             type: "meetingTranscript",
@@ -138,11 +142,18 @@ export function TranscriptionComponent(props: ITranscriptionComponentProps) {
                 <div id="transcribedText">
                     {
                         transcribedText.length > 0 &&
-                        transcribedText.map((resObj: CreateTodoInput) => {
+                        transcribedText.map((resObj: ITranslatedInput) => {
                             return <div key={resObj.id} className={"transcriptionText"}>
-                                <h5>
-                                    {resObj.speaker}: </h5>
-                                <p className={"bodyOfText"}> {resObj.transcript}</p>
+                                <div className={"transcriptBlocks"}>
+                                    <h5>
+                                        {resObj.speaker}: </h5>
+                                    <p className={"bodyOfText"}> {resObj.transcript}</p>
+                                </div>
+                                {resObj?.translatedText && resObj?.translatedText?.length > 0 &&
+                                <div className={"transcriptBlocks"}>
+                                    <p>(Translated Text)</p>
+                                    <p className={"translatedTextParagraph"}> {resObj.translatedText}</p>
+                                </div>}
                             </div>
                         })
                     }

@@ -1,0 +1,9 @@
+type Todo @model @auth(rules: [{allow: private}]) {
+  id: ID!
+  speaker: String!
+  transcript: String
+  language: String!
+  meetingId: String!
+  createdAt: String!
+  type: String! @index(name: "todosByDate", queryField: "todosByDate", sortKeyFields: ["createdAt"])
+}

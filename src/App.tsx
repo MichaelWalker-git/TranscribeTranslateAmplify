@@ -1,16 +1,14 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {Amplify, Auth, API, graphqlOperation} from "aws-amplify";
 
 import {
     AmplifyProvider,
     Authenticator,
-    Button,
     Flex,
     View,
 } from "@aws-amplify/ui-react";
 import aws_exports from "./aws-exports";
 
-import * as TranscribeClient from "./components/TranscribeClient";
 import * as TranslateClient from "./components/TranslationClient";
 import {ICredentials} from "@aws-amplify/core";
 import MicrophoneStream from "microphone-stream";
@@ -18,14 +16,16 @@ import {TranscribeStreamingClient} from "@aws-sdk/client-transcribe-streaming";
 
 import "@aws-amplify/ui-react/styles.css";
 import theme from "./theme";
-import {createTodo} from "./graphql/mutations";
-import {CreateTodoInput} from "./API";
-import {CognitoUser} from "amazon-cognito-identity-js";
 import {onCreateTodo} from "./graphql/subscriptions";
-import {GraphQLSubscription, GraphQLQuery} from "@aws-amplify/api";
-import {listTodos, todosByDate} from "./graphql/queries";
+import {todosByDate} from "./graphql/queries";
 import {TranslationComponent} from "./components/TranslationComponent";
-import {TranscriptionComponent} from "./components/TranscriptionComponent";
+import {ITranslatedInput, TranscriptionComponent} from "./components/TranscriptionComponent";
+import {
+    PollyClient,
+    SynthesizeSpeechCommand,
+    SynthesizeSpeechCommandInput,
+    SynthesizeSpeechCommandOutput
+} from "@aws-sdk/client-polly";
 
 window.Buffer = window.Buffer || require("buffer").Buffer;
 
@@ -33,13 +33,14 @@ Amplify.configure(aws_exports);
 
 const App = () => {
     const [selectedLanguage, setSelectedLanguage] = React.useState("");
-    const [transcribedText, setTranscribedText] = React.useState<CreateTodoInput[]>([]);
+    const [transcribedText, setTranscribedText] = React.useState<ITranslatedInput[]>([]);
     const [translatedText, setTranslatedText] = React.useState("");
     const [targetLanguage, setTargetLanguage] = React.useState("");
-    const [translationLanguageList, setTranslationLanguageList] = React.useState("");
+    // const [translationLanguageList, setTranslationLanguageList] = React.useState("");
     const [userCredentials, setUserCredentials] = React.useState<ICredentials>();
     const [transcriptionClient, setTranscriptionClient] = React.useState<TranscribeStreamingClient>();
     const [microphoneStream, setMicrophoneStream] = React.useState<MicrophoneStream>();
+    const [audioContext, setAudioContext] = useState<AudioContext>();
 
     const fetchMessages = async () => {
         const messagesData = await API.graphql(
@@ -55,8 +56,35 @@ const App = () => {
         setTranscribedText(messagesData.data.todosByDate.items);
     };
 
+    const speakOutLoud = async (inputText: string) => {
+        const client = new PollyClient({region: "us-east-1"});
+        //
+        // const params: SynthesizeSpeechCommandInput = {
+        //     OutputFormat: 'mp3',
+        //     Text: inputText,
+        //     VoiceId: 'Joanna'
+        // };
+        //
+        // const command = new SynthesizeSpeechCommand(params)
+        //
+        // try {
+        //     const data: SynthesizeSpeechCommandOutput = await client.send(command);
+        //     const source = audioContext?.createBufferSource();
+        //     // if(data.SynthesisTask){
+        //     //     source.buffer = await audioContext?.decodeAudioData(data.AudioStream.transformToByteArray())
+        //     //
+        //     // }
+        // } catch (error) {
+        //     // error handling.
+        // } finally {
+        //     // finally.
+        // }
+    }
+
     useEffect(() => {
         fetchMessages();
+        setAudioContext(new AudioContext());
+
     }, []);
 
     useEffect(() => {
@@ -82,6 +110,8 @@ const App = () => {
                 //     return;
                 // }
                 fetchMessages();
+                //Use Polly to speak language out loud
+
             },
         });
 
@@ -95,25 +125,36 @@ const App = () => {
 
 
     const translateText = async () => {
-        const sourceText = transcribedText;
-        if (sourceText.length === 0) {
+        const aggTranslatedText = transcribedText
+            .reduce((acc, curr) => `${acc} | ${curr.transcript}`, '')
+        if (aggTranslatedText.length === 0) {
             alert("No text to translate!");
             return;
         }
-        if (translationLanguageList === "") {
+        if (targetLanguage === "") {
             alert("Please select a language to translate to!");
             return;
         }
         try {
             if (userCredentials) {
-                const wholeSentence = sourceText.join(" ");
-                const translation = await TranslateClient.translateTextToLanguage(
-                    wholeSentence,
+                const translation: string = await TranslateClient.translateTextToLanguage(
+                    aggTranslatedText,
                     targetLanguage,
                     userCredentials
                 );
                 if (translation) {
                     setTranslatedText(translation);
+                    // remap this string to the original conversation
+                    const splitValues = translation.split("|");
+                    splitValues.shift();
+                    const withTranslation = transcribedText.map((orig, index) => {
+                        return {
+                            ...orig,
+                            translatedText: splitValues[index]
+                        }
+                    });
+                    setTranscribedText(withTranslation);
+                    console.log(translation, "translation");
                 }
             } else {
                 alert("No user credentials")
@@ -132,11 +173,11 @@ const App = () => {
         console.log("handleTranslationLanguageList", event.target.value);
         setTargetLanguage(event.target.value);
     }
+
     const handleInputLanguageList = (event: React.ChangeEvent<HTMLSelectElement>) => {
         console.log("handleInputLanguageList", event.target.value);
         setSelectedLanguage(event.target.value);
     }
-
 
     return (
         <AmplifyProvider theme={theme}>
@@ -165,7 +206,8 @@ const App = () => {
                                     microphoneStream={microphoneStream}/>
                                 <TranslationComponent clearTranscription={clearTranscription}
                                                       translateText={translateText}
-                                                      handleTranslationLanguageList={handleInputLanguageList}/>
+                                                      targetLanguage={targetLanguage}
+                                                      handleTranslationLanguageList={handleTranslationLanguageList}/>
                             </div>
                         </View>
                     </Flex>
